@@ -18,23 +18,26 @@ CFLAGS_EMCC+=-s WASM=1
 CFLAGS_EMCC+=-s EXTRA_EXPORTED_RUNTIME_METHODS='["cwrap", "addFunction", "removeFunction", "stringToUTF8", "lengthBytesUTF8", "_malloc", "_free"]'
 CFLAGS_EMCC+=-s NODEJS_CATCH_EXIT=0
 CFLAGS_EMCC+=-s MODULARIZE=1
-CFLAGS_EMCC+=-s EXPORT_NAME=QuickJSRaw
+CFLAGS_EMCC+=-s EXPORT_NAME=emscripten
 CFLAGS_EMCC+=-s INVOKE_RUN=0
 CFLAGS_EMCC+=-s ALLOW_MEMORY_GROWTH=1
 CFLAGS_EMCC+=-s ALLOW_TABLE_GROWTH=1
 CFLAGS_EMCC+=-s FILESYSTEM=0
+CFLAGS_EMCC+=-s ENVIRONMENT=web
+CFLAGS_EMCC+=-s TEXTDECODER=0
 ifdef DEBUG
 	CFLAGS=-O0
 	CFLAGS+=-DQTS_DEBUG_MODE
 	CFLAGS_EMCC+=-g4
 	CFLAGS_EMCC+=-s ASSERTIONS=1
 else
-	CFLAGS=-O3
-	CFLAGS_EMCC+=-s SINGLE_FILE=1
-	CFLAGS_EMCC+=--closure 1
+	CFLAGS=-O1
+	CFLAGS_EMCC+=-s SINGLE_FILE=0
+# 	CFLAGS_EMCC+=--closure 1
+	CFLAGS_EMCC+=--pre-js pre.js
 endif
 
-wasm: $(BUILD_DIR) ts/quickjs-emscripten-module.js  ts/ffi.ts
+wasm: $(BUILD_DIR) ts/module.js  ts/ffi.ts
 native: $(BUILD_WRAPPER)/native/test.exe
 all: wasm native
 
@@ -59,7 +62,7 @@ ts/ffi.ts: $(WRAPPER_ROOT)/interface.c ts/ffi-types.ts generate.ts
 
 ### Executables
 # The WASM module we'll link to typescript
-ts/quickjs-emscripten-module.js: $(BUILD_WRAPPER)/wasm/interface.o $(QUICKJS_OBJS_WASM)
+ts/module.js: $(BUILD_WRAPPER)/wasm/interface.o $(QUICKJS_OBJS_WASM)
 	$(EMCC) $(CFLAGS) $(CFLAGS_EMCC) $(EMCC_EXPORTED_FUNCS) -o $@ $< $(QUICKJS_OBJS_WASM)
 
 # Trying to debug C...
@@ -86,9 +89,9 @@ $(BUILD_QUICKJS)/native/%.o: $(QUICKJS_ROOT)/%.c | $(BUILD_ROOT)
 
 clean:
 	rm -rfv ./ts/ffi.ts
-	rm -rfv ./ts/quickjs-emscripten-module.js
+	rm -rfv ./ts/module.js
 	rm -rf ./ts/quickjs-emscripten-module.map
-	rm -rf ./ts/quickjs-emscripten-module.wasm
+# 	rm -rf ./ts/quickjs-emscripten-module.wasm
 	rm -rf ./ts/quickjs-emscripten-module.wasm.map
 	rm -rfv $(BUILD_ROOT)
 	rm -rf $(WRAPPER_ROOT)/interface.h
