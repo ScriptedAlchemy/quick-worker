@@ -49,6 +49,41 @@ extern const uint32_t qjsc_qjscalc_size;
 static int bignum_ext;
 #endif
 
+static int bind_fetch(JSContext *ctx) {
+  // Create the fetch function in QuickJS.
+  JSValue fetchFuncValue = JS_NewCFunction(ctx, js_fetch_wrapper, "fetch", 2);
+  // Use the fetch function as an attribute of the global object.
+  JSValue globalObj = JS_GetGlobalObject(ctx);
+  JS_SetPropertyStr(ctx, globalObj, "fetch", fetchFuncValue);
+  // Release the reference.
+  JS_FreeValue(ctx, fetchFuncValue);
+  JS_FreeValue(ctx, globalObj);
+  return 0;
+}
+
+EM_JS(void, js_fetch_wrapper, (const char* url), {
+  // Converts a C string to a JavaScript string
+  var jsUrl = UTF8ToString(url);
+  // Call fetch
+  fetch(jsUrl)
+    .then(function(response) {
+      // Processing responses, such as conversion to text
+      return response.text();
+    })
+    .then(function(text) {
+      // Output result
+      console.log('Response Text: ' + text);
+      ccall('_c_callback', 'void', ['string'], [text]);
+    })
+    .catch(function(error) {
+      console.error('Fetch error: ' + error);
+    });
+});
+void c_callback(const char* result) {
+  // constructing JSString from const char* use QuickJS API
+  string = JS_NewString(ctx, result);
+}
+
 static int eval_buf(JSContext *ctx, const void *buf, int buf_len,
                     const char *filename, int eval_flags)
 {
